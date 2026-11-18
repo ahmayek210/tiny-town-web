@@ -1,220 +1,236 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
-		<title>Tiny Town</title>
-		<style>
-html, body, #canvas {
-	margin: 0;
-	padding: 0;
-	border: 0;
-}
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<title>Tiny Town</title>
+	<link id="-gd-engine-icon" rel="icon" type="image/png" href="tiny-town-20261118-web3.icon.png" />
+<link rel="apple-touch-icon" href="tiny-town-20261118-web3.apple-touch-icon.png"/>
 
-body {
-	color: white;
-	background-color: black;
-	overflow: hidden;
-	touch-action: none;
-}
-
-#canvas {
-	display: block;
-}
-
-#canvas:focus {
-	outline: none;
-}
-
-#status, #status-splash, #status-progress {
-	position: absolute;
-	left: 0;
-	right: 0;
-}
-
-#status, #status-splash {
-	top: 0;
-	bottom: 0;
-}
-
-#status {
-	background-color: #242424;
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	align-items: center;
-	visibility: hidden;
-}
-
-#status-splash {
-	max-height: 100%;
-	max-width: 100%;
-	margin: auto;
-}
-
-#status-splash.show-image--false {
-	display: none;
-}
-
-#status-splash.fullsize--true {
-	height: 100%;
-	width: 100%;
-	object-fit: contain;
-}
-
-#status-splash.use-filter--false {
-	image-rendering: pixelated;
-}
-
-#status-progress, #status-notice {
-	display: none;
-}
-
-#status-progress {
-	bottom: 10%;
-	width: 50%;
-	margin: 0 auto;
-}
-
-#status-notice {
-	background-color: #5b3943;
-	border-radius: 0.5rem;
-	border: 1px solid #9b3943;
-	color: #e0e0e0;
-	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
-	line-height: 1.3;
-	margin: 0 2rem;
-	overflow: hidden;
-	padding: 1rem;
-	text-align: center;
-	z-index: 1;
-}
-		</style>
-		<link id="-gd-engine-icon" rel="icon" type="image/png" href="Tiny Town.icon.png" />
-<link rel="apple-touch-icon" href="Tiny Town.apple-touch-icon.png"/>
-
-	</head>
-	<body>
-		<canvas id="canvas">
-			Your browser does not support the canvas tag.
-		</canvas>
-
-		<noscript>
-			Your browser does not support JavaScript.
-		</noscript>
-
-		<div id="status">
-			<img id="status-splash" class="show-image--true fullsize--true use-filter--true" src="Tiny Town.png" alt="">
-			<progress id="status-progress"></progress>
-			<div id="status-notice"></div>
+	<style>
+		html, body {
+			margin: 0;
+			overflow: hidden;
+			overscroll-behavior: none;
+			color: white;
+			background: black;
+		}
+		[hidden] { display: none !important; }
+		#shell {
+			position: fixed;
+			left: var(--visible-left, 0px);
+			top: var(--visible-top, 0px);
+			width: var(--visible-width, 100%);
+			height: 100vh;
+			height: var(--visible-height, 100dvh);
+			box-sizing: border-box;
+			padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+				env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+			display: grid;
+			background: black;
+		}
+		#play-area {
+			position: relative;
+			display: grid;
+			place-items: center;
+			min-width: 0;
+			min-height: 0;
+		}
+		#frame { position: relative; }
+		#canvas {
+			display: block;
+			width: 100%;
+			height: 100%;
+			touch-action: none;
+		}
+		#canvas:focus { outline: none; }
+		#status {
+			position: absolute;
+			inset: 0;
+			display: grid;
+			place-items: center;
+			background: #242424;
+			font: 1rem system-ui, sans-serif;
+		}
+		#splash {
+			position: absolute;
+			max-width: 100%;
+			max-height: 100%;
+		}
+		#splash.show-image--false { display: none; }
+		#splash.fullsize--true { width: 100%; height: 100%; object-fit: contain; }
+		#splash.use-filter--false { image-rendering: pixelated; }
+		#progress { position: absolute; bottom: 10%; width: 50%; }
+		#error {
+			z-index: 1;
+			max-width: 85%;
+			margin: 0;
+			padding: .75rem 1rem;
+			background: #5b3943;
+			border-radius: .5rem;
+			white-space: pre-wrap;
+		}
+		#rotate {
+			position: absolute;
+			top: min(85%, calc(50% + var(--frame-half-height, 0px) + 1rem));
+			left: 50%;
+			transform: translateX(-50%);
+			width: max-content;
+			max-width: 90%;
+			margin: 0;
+			font: 1rem system-ui, sans-serif;
+			text-align: center;
+			pointer-events: none;
+		}
+	</style>
+</head>
+<body>
+	<main id="shell">
+		<div id="play-area">
+			<div id="frame">
+				<canvas id="canvas" width="1280" height="720" aria-label="Tiny Town game">
+					Your browser does not support the canvas tag.
+				</canvas>
+			</div>
+			<p id="rotate" role="status" hidden>Rotate your phone to play</p>
+			<div id="status" aria-label="Loading Tiny Town">
+				<img id="splash" class="show-image--true fullsize--true use-filter--true" src="tiny-town-20261118-web3.png" alt="">
+				<progress id="progress" aria-label="Game loading progress"></progress>
+				<p id="error" role="alert" hidden></p>
+				<noscript>Your browser does not support JavaScript.</noscript>
+			</div>
 		</div>
+	</main>
+	<script src="tiny-town-20261118-web3.js"></script>
+	<script>
+		const shell = document.getElementById("shell");
+		const playArea = document.getElementById("play-area");
+		const frame = document.getElementById("frame");
+		const canvas = document.getElementById("canvas");
+		const rotate = document.getElementById("rotate");
+		const handsOn = matchMedia("(pointer: coarse) and (hover: none)");
+		let gameplay = false;
+		let blocked = false;
+		let ready = false;
+		let fullscreenRequested = false;
+		let layoutFrame = 0;
 
-		<script src="Tiny Town.js"></script>
-		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"Tiny Town","experimentalVK":false,"fileSizes":{"Tiny Town.pck":24262296,"Tiny Town.wasm":37900721},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
-const GODOT_THREADS_ENABLED = false;
-const engine = new Engine(GODOT_CONFIG);
-
-(function () {
-	const statusOverlay = document.getElementById('status');
-	const statusProgress = document.getElementById('status-progress');
-	const statusNotice = document.getElementById('status-notice');
-
-	let initializing = true;
-	let statusMode = '';
-
-	function setStatusMode(mode) {
-		if (statusMode === mode || !initializing) {
-			return;
-		}
-		if (mode === 'hidden') {
-			statusOverlay.remove();
-			initializing = false;
-			return;
-		}
-		statusOverlay.style.visibility = 'visible';
-		statusProgress.style.display = mode === 'progress' ? 'block' : 'none';
-		statusNotice.style.display = mode === 'notice' ? 'block' : 'none';
-		statusMode = mode;
-	}
-
-	function setStatusNotice(text) {
-		while (statusNotice.lastChild) {
-			statusNotice.removeChild(statusNotice.lastChild);
-		}
-		const lines = text.split('\n');
-		lines.forEach((line) => {
-			statusNotice.appendChild(document.createTextNode(line));
-			statusNotice.appendChild(document.createElement('br'));
-		});
-	}
-
-	function displayFailureNotice(err) {
-		console.error(err);
-		if (err instanceof Error) {
-			setStatusNotice(err.message);
-		} else if (typeof err === 'string') {
-			setStatusNotice(err);
-		} else {
-			setStatusNotice('An unknown error occurred.');
-		}
-		setStatusMode('notice');
-		initializing = false;
-	}
-
-	const missing = Engine.getMissingFeatures({
-		threads: GODOT_THREADS_ENABLED,
-	});
-
-	if (missing.length !== 0) {
-		if (GODOT_CONFIG['serviceWorker'] && GODOT_CONFIG['ensureCrossOriginIsolationHeaders'] && 'serviceWorker' in navigator) {
-			let serviceWorkerRegistrationPromise;
-			try {
-				serviceWorkerRegistrationPromise = navigator.serviceWorker.getRegistration();
-			} catch (err) {
-				serviceWorkerRegistrationPromise = Promise.reject(new Error('Service worker registration failed.'));
+		function layout() {
+			layoutFrame = 0;
+			const viewport = window.visualViewport;
+			const fitVisible = viewport && Math.abs(viewport.scale - 1) < 0.01;
+			for (const [property, value] of [
+				["width", viewport?.width], ["height", viewport?.height],
+				["left", viewport?.offsetLeft], ["top", viewport?.offsetTop]
+			]) {
+				const name = "--visible-" + property;
+				if (fitVisible) shell.style.setProperty(name, value + "px");
+				else shell.style.removeProperty(name);
 			}
-			// There's a chance that installing the service worker would fix the issue
-			Promise.race([
-				serviceWorkerRegistrationPromise.then((registration) => {
-					if (registration != null) {
-						return Promise.reject(new Error('Service worker already exists.'));
-					}
-					return registration;
-				}).then(() => engine.installServiceWorker()),
-				// For some reason, `getRegistration()` can stall
-				new Promise((resolve) => {
-					setTimeout(() => resolve(), 2000);
-				}),
-			]).then(() => {
-				// Reload if there was no error.
-				window.location.reload();
-			}).catch((err) => {
-				console.error('Error while registering service worker:', err);
-			});
-		} else {
-			// Display the message as usual
-			const missingMsg = 'Error\nThe following features required to run Godot projects on the Web are missing:\n';
-			displayFailureNotice(missingMsg + missing.join('\n'));
+			const { width, height } = playArea.getBoundingClientRect();
+			const unit = Math.min(width / 16, height / 9);
+			const cssWidth = unit * 16;
+			const cssHeight = unit * 9;
+			frame.style.width = cssWidth + "px";
+			frame.style.height = cssHeight + "px";
+			playArea.style.setProperty("--frame-half-height", cssHeight / 2 + "px");
+			const portrait = handsOn.matches && height > width;
+			rotate.hidden = !ready || !portrait;
+			const blockGameplay = portrait && gameplay;
+			if (blocked !== blockGameplay) {
+				blocked = blockGameplay;
+				canvas.inert = blocked;
+				if (blocked) TinyTownWeb.cancelInput?.();
+			}
 		}
-	} else {
-		setStatusMode('progress');
-		engine.startGame({
-			'onProgress': function (current, total) {
-				if (current > 0 && total > 0) {
-					statusProgress.value = current;
-					statusProgress.max = total;
-				} else {
-					statusProgress.removeAttribute('value');
-					statusProgress.removeAttribute('max');
-				}
+
+		function scheduleLayout() {
+			if (!layoutFrame) layoutFrame = requestAnimationFrame(layout);
+		}
+
+		window.TinyTownWeb = {
+			setGameplay(active) {
+				gameplay = active;
+				scheduleLayout();
 			},
-		}).then(() => {
-			setStatusMode('hidden');
-		}, displayFailureNotice);
-	}
-}());
-		</script>
-	</body>
+			async enterFullscreen() {
+				if (!handsOn.matches || fullscreenRequested || document.fullscreenElement ||
+					!document.fullscreenEnabled || typeof shell.requestFullscreen !== "function" ||
+					navigator.userActivation?.isActive === false) return;
+				fullscreenRequested = true;
+				try {
+					await shell.requestFullscreen({ navigationUI: "hide" });
+					if (document.fullscreenElement === shell && typeof screen.orientation?.lock === "function") {
+						await screen.orientation.lock("landscape");
+					}
+				} catch {
+					// Keep playing in the contained viewport when the browser declines.
+				} finally {
+					scheduleLayout();
+				}
+			}
+		};
+
+		// A touch stream can keep its initial target after rotation.
+		canvas.addEventListener("touchcancel", () => TinyTownWeb.cancelInput?.(), { capture: true });
+		for (const type of ["touchstart", "touchmove", "touchend", "mousedown", "mousemove", "mouseup"]) {
+			canvas.addEventListener(type, event => {
+				if (!blocked) return;
+				event.preventDefault();
+				event.stopImmediatePropagation();
+			}, { capture: true, passive: false });
+		}
+		for (const type of ["resize", "pageshow", "focus"]) {
+			window.addEventListener(type, scheduleLayout);
+		}
+		document.addEventListener("fullscreenchange", scheduleLayout);
+		document.addEventListener("visibilitychange", scheduleLayout);
+		window.visualViewport?.addEventListener("resize", scheduleLayout);
+		window.visualViewport?.addEventListener("scroll", scheduleLayout);
+		screen.orientation?.addEventListener("change", scheduleLayout);
+		handsOn.addEventListener("change", scheduleLayout);
+		layout();
+		// Keep one backing buffer through resize so active rendering and input share
+		// a stable authored viewport. Allow for the screen's landscape size at launch.
+		const longSide = Math.max(screen.width, screen.height);
+		const shortSide = Math.min(screen.width, screen.height);
+		const landscapeWidth = Math.min(longSide, shortSide * 16 / 9);
+		const bufferWidth = Math.max(frame.clientWidth, landscapeWidth) * window.devicePixelRatio;
+		const pixels = Math.max(80, Math.round(bufferWidth / 16));
+		canvas.width = pixels * 16;
+		canvas.height = pixels * 9;
+
+		const status = document.getElementById("status");
+		const progress = document.getElementById("progress");
+		const notice = document.getElementById("error");
+		const missing = Engine.getMissingFeatures({ threads: false });
+		const engine = new Engine({"args":[],"canvasResizePolicy":0,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"tiny-town-20261118-web3","experimentalVK":false,"fileSizes":{"tiny-town-20261118-web3.pck":14501888,"tiny-town-20261118-web3.wasm":39513091},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4});
+		function showError(error) {
+			console.error(error);
+			progress.hidden = true;
+			notice.textContent = error.message || String(error);
+			notice.hidden = false;
+		}
+		if (missing.length) {
+			showError("Your browser is missing features required to play Tiny Town.\n" + missing.join("\n"));
+		} else {
+			engine.startGame({
+				canvas,
+				onProgress(current, total) {
+					if (total > 0) {
+						progress.max = total;
+						progress.value = current;
+					} else {
+						progress.removeAttribute("value");
+					}
+				}
+			}).then(() => {
+				status.remove();
+				ready = true;
+				scheduleLayout();
+			}, showError);
+		}
+	</script>
+</body>
 </html>
 
