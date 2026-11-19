@@ -4,8 +4,8 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 	<title>Tiny Town</title>
-	<link id="-gd-engine-icon" rel="icon" type="image/png" href="tiny-town-20261118-web3.icon.png" />
-<link rel="apple-touch-icon" href="tiny-town-20261118-web3.apple-touch-icon.png"/>
+	<link id="-gd-engine-icon" rel="icon" type="image/png" href="tiny-town-20261119-responsive.icon.png" />
+<link rel="apple-touch-icon" href="tiny-town-20261119-responsive.apple-touch-icon.png"/>
 
 	<style>
 		html, body {
@@ -94,14 +94,14 @@
 			</div>
 			<p id="rotate" role="status" hidden>Rotate your phone to play</p>
 			<div id="status" aria-label="Loading Tiny Town">
-				<img id="splash" class="show-image--true fullsize--true use-filter--true" src="tiny-town-20261118-web3.png" alt="">
+				<img id="splash" class="show-image--true fullsize--true use-filter--true" src="tiny-town-20261119-responsive.png" alt="">
 				<progress id="progress" aria-label="Game loading progress"></progress>
 				<p id="error" role="alert" hidden></p>
 				<noscript>Your browser does not support JavaScript.</noscript>
 			</div>
 		</div>
 	</main>
-	<script src="tiny-town-20261118-web3.js"></script>
+	<script src="tiny-town-20261119-responsive.js"></script>
 	<script>
 		const shell = document.getElementById("shell");
 		const playArea = document.getElementById("play-area");
@@ -109,11 +109,14 @@
 		const canvas = document.getElementById("canvas");
 		const rotate = document.getElementById("rotate");
 		const handsOn = matchMedia("(pointer: coarse) and (hover: none)");
+		const preferContained = new URLSearchParams(location.search).get("layout") === "contained";
+		const maxBufferPixels = 2_500_000;
 		let gameplay = false;
 		let blocked = false;
 		let ready = false;
 		let fullscreenRequested = false;
 		let layoutFrame = 0;
+		let previousFrame = null;
 
 		function layout() {
 			layoutFrame = 0;
@@ -128,19 +131,40 @@
 				else shell.style.removeProperty(name);
 			}
 			const { width, height } = playArea.getBoundingClientRect();
+			if (width < 1 || height < 1) return;
+			const aspect = width / height;
+			const contained = preferContained || aspect < 1.25 || aspect > 2.5;
 			const unit = Math.min(width / 16, height / 9);
-			const cssWidth = unit * 16;
-			const cssHeight = unit * 9;
+			const cssWidth = contained ? unit * 16 : width;
+			const cssHeight = contained ? unit * 9 : height;
+			const density = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(maxBufferPixels / (cssWidth * cssHeight)));
+			const bufferUnit = Math.max(1, Math.round(unit * density));
+			const bufferWidth = contained ? bufferUnit * 16 : Math.max(1, Math.round(cssWidth * density));
+			const bufferHeight = contained ? bufferUnit * 9 : Math.max(1, Math.round(cssHeight * density));
+			const bufferChanged = canvas.width !== bufferWidth || canvas.height !== bufferHeight;
 			frame.style.width = cssWidth + "px";
 			frame.style.height = cssHeight + "px";
+			const bounds = frame.getBoundingClientRect();
+			TinyTownWeb.canvasCssWidth = bounds.width;
 			playArea.style.setProperty("--frame-half-height", cssHeight / 2 + "px");
 			const portrait = handsOn.matches && height > width;
 			rotate.hidden = !ready || !portrait;
 			const blockGameplay = portrait && gameplay;
-			if (blocked !== blockGameplay) {
-				blocked = blockGameplay;
-				canvas.inert = blocked;
-				if (blocked) TinyTownWeb.cancelInput?.();
+			const mappingChanged = previousFrame && (
+				bounds.x !== previousFrame.x || bounds.y !== previousFrame.y ||
+				bounds.width !== previousFrame.width || bounds.height !== previousFrame.height
+			);
+			if (ready && (bufferChanged || mappingChanged || (!blocked && blockGameplay))) {
+				TinyTownWeb.cancelInput?.();
+			}
+			previousFrame = bounds;
+			blocked = blockGameplay;
+			canvas.inert = blocked;
+			// Godot's None policy leaves the buffer under shell control. The Web
+			// display server detects these dimensions and updates the viewport.
+			if (bufferChanged) {
+				canvas.width = bufferWidth;
+				canvas.height = bufferHeight;
 			}
 		}
 
@@ -149,6 +173,7 @@
 		}
 
 		window.TinyTownWeb = {
+			canvasCssWidth: 0,
 			setGameplay(active) {
 				gameplay = active;
 				scheduleLayout();
@@ -164,7 +189,7 @@
 						await screen.orientation.lock("landscape");
 					}
 				} catch {
-					// Keep playing in the contained viewport when the browser declines.
+					// Keep playing in the usable browser viewport when the browser declines.
 				} finally {
 					scheduleLayout();
 				}
@@ -190,21 +215,12 @@
 		screen.orientation?.addEventListener("change", scheduleLayout);
 		handsOn.addEventListener("change", scheduleLayout);
 		layout();
-		// Keep one backing buffer through resize so active rendering and input share
-		// a stable authored viewport. Allow for the screen's landscape size at launch.
-		const longSide = Math.max(screen.width, screen.height);
-		const shortSide = Math.min(screen.width, screen.height);
-		const landscapeWidth = Math.min(longSide, shortSide * 16 / 9);
-		const bufferWidth = Math.max(frame.clientWidth, landscapeWidth) * window.devicePixelRatio;
-		const pixels = Math.max(80, Math.round(bufferWidth / 16));
-		canvas.width = pixels * 16;
-		canvas.height = pixels * 9;
 
 		const status = document.getElementById("status");
 		const progress = document.getElementById("progress");
 		const notice = document.getElementById("error");
 		const missing = Engine.getMissingFeatures({ threads: false });
-		const engine = new Engine({"args":[],"canvasResizePolicy":0,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"tiny-town-20261118-web3","experimentalVK":false,"fileSizes":{"tiny-town-20261118-web3.pck":14501888,"tiny-town-20261118-web3.wasm":39513091},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4});
+		const engine = new Engine({"args":[],"canvasResizePolicy":0,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"tiny-town-20261119-responsive","experimentalVK":false,"fileSizes":{"tiny-town-20261119-responsive.pck":14503072,"tiny-town-20261119-responsive.wasm":39513091},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4});
 		function showError(error) {
 			console.error(error);
 			progress.hidden = true;
